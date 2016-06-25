@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Configuration;
 using System.IO;
@@ -13,19 +13,25 @@ namespace CWI.TechnicalRecruiting.TechnicalTests
 
         public ChangeDateUnitTest()
         {
-            var currentDirectory = Directory.GetCurrentDirectory();
-            var rootFolder = "\\TechnicalTests\\";
-            var directory = currentDirectory.Substring(0, currentDirectory.LastIndexOf(rootFolder) + rootFolder.Length);
-            var assemblyPath = Path.Combine(directory, "TechnicalTests.ChangeDate.Tests/bin/Debug/TechnicalTests.Candidates.dll");            
-            var testAssembly = Assembly.LoadFrom(assemblyPath);
+            var testAssembly = GetUnitTestAssembly();
 
             var candidateNamespace = "BeltranoDosSantos";
             candidadeClass = Activator.CreateInstance(testAssembly.GetType($"{candidateNamespace}.CWIDateTime"));
-        }
+        }        
 
         public ChangeDateUnitTest(dynamic candidateClass)
         {
             candidadeClass = candidateClass;
+        }
+
+        private Assembly GetUnitTestAssembly()
+        {
+            var currentDirectory = Directory.GetCurrentDirectory();
+            var solutionFolder = "\\TechnicalTests\\"; 
+            var directory = currentDirectory.Substring(0, currentDirectory.LastIndexOf(solutionFolder) + solutionFolder.Length);
+            var assemblyPath = Path.Combine(directory, "TechnicalTests.ChangeDate.Tests/bin/Debug/TechnicalTests.Candidates.dll");
+            var testAssembly = Assembly.LoadFrom(assemblyPath);
+            return testAssembly;
         }
 
         [TestMethod]
