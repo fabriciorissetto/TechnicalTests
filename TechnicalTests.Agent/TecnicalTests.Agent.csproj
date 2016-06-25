@@ -50,7 +50,7 @@
     <Compile Include="ProjectBuilder\BuildResult.cs" />
     <Compile Include="ProjectBuilder\ProjectBuilder.cs" />
     <Compile Include="ProjectEditor\ProjectEditor.cs" />
-    <Compile Include="ProjectTester\TestResult.cs" />
+    <Compile Include="OverallResult.cs" />
     <Compile Include="ProjectTester\ProjectTester.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestType.cs" />

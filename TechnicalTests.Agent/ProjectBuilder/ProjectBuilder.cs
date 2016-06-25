@@ -14,7 +14,7 @@ namespace TecnicalTests.Agent
 {
     public class ProjectBuilder
     {
-        public BuildResult Build(string candidatesProjectPath)
+        public BuildResult Build(string projectPath)
         {
             var logFile = Path.Combine(Directory.GetCurrentDirectory(), "tempLog.txt");
 
@@ -29,7 +29,7 @@ namespace TecnicalTests.Agent
             var fileLogger = new FileLogger() { Parameters = $"logfile={logFile}" };
             buildParameters.Loggers = new List<Microsoft.Build.Framework.ILogger> { fileLogger }.AsEnumerable();
 
-            var buildRequest = new BuildRequestData(candidatesProjectPath, globalProperty, "14.0", new string[] { "Build" }, null);
+            var buildRequest = new BuildRequestData(projectPath, globalProperty, "14.0", new string[] { "Build" }, null);
 
             Microsoft.Build.Execution.BuildResult result = BuildManager.DefaultBuildManager.Build(buildParameters, buildRequest);
             var buildresult = new BuildResult();

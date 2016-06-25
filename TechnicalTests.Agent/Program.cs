@@ -15,30 +15,37 @@ namespace TecnicalTests.Agent
     {
         static void Main(string[] args)
         {
-            //TODO: pegar esses campos virão da tela
-            var candidateName = "Beltrano dos Santos";                        
-            var candidateCode = File.ReadAllText(@"C:\Users\fabriciosilva\Desktop\CWIDateTime.cs");
+            // Esses campos virão da tela
+            var candidateName = "Beltrano dos Santos";
+            var candidateCode = File.ReadAllText(@"C:\Users\fabriciosilva\Desktop\CWIDateTime3.cs");
 
+            var result = BuildCandidateCode(candidateName, candidateCode);
+
+            Console.ReadKey();
+        }
+
+        private static OverallResult BuildCandidateCode(string candidateName, string candidateCode)
+        {
             var candidatesProjectPath = ConfigurationManager.AppSettings["candidatesProjectPath"];
             var unitTestProjectPath = ConfigurationManager.AppSettings["unitTestProjectPath"];
-            
 
-            var candidatesProject = new ProjectEditor(candidatesProjectPath);            
-            candidatesProject.IncludeFileInProject(candidateName, candidateCode, "CWIDateTime.cs");            
+            var candidatesProject = new ProjectEditor(candidatesProjectPath);
+            candidatesProject.IncludeFileInProject(candidateName, candidateCode, "CWIDateTime.cs");
 
             var builder = new ProjectBuilder();
             var cadidatesProjectBuildResult = builder.Build(candidatesProjectPath);
 
+
             if (!cadidatesProjectBuildResult.Passed)
             {
                 candidatesProject.RollbackEditions();
-                //return cadidatesProjectBuildResult;
+                return new OverallResult() { Error = "Não foi possível compilar sua classe. Por favor, verifique se ela possui erros de sintaxe. \nDetalhes do erro:\n" + cadidatesProjectBuildResult.Log };
             }
-            
-            var tester = new ProjectTester(unitTestProjectPath);
-            var testResult = tester.ValidateTest(TestType.ChangeDate, candidateName);
 
-            return;
+            var tester = new ProjectTester(unitTestProjectPath, candidateName);
+            var overallTestsResult = tester.ValidateTests(TestType.ChangeDate);
+
+            return overallTestsResult;
         }
     }
 }

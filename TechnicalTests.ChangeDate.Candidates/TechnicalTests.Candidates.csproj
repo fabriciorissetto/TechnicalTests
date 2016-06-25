@@ -43,7 +43,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Beltrano dos Santos\CWIDateTime.cs" />
     <Compile Include="Fulano da Silva\CWIDateTime.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

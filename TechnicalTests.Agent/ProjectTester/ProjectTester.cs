@@ -15,20 +15,23 @@ namespace TecnicalTests.Agent
     public class ProjectTester
     {
         private string csprojPath;
-        private string projectPath;        
+        private string projectPath;
+        private string candidateNamespace;
 
-        public ProjectTester(string csprojPath)
+        public ProjectTester(string csprojPath, string candidate)
         {
             this.csprojPath = csprojPath;
             this.projectPath = Path.GetDirectoryName(csprojPath);
+            this.candidateNamespace = GetCandidateNamespace(candidate);
         }
 
-        public TestResult ValidateTest(TestType testType, string candidate)
+        public OverallResult ValidateTests(TestType testType)
         {
             if (testType == TestType.ChangeDate)
             {
-                var testResult = ValidateChangeDateSignature(candidate);
+                ChangeUnitTestProjectToPointToCandidadeClass();
 
+                var testResult = ValidateChangeDateSignature();
                 if (testResult.Success)
                 {
                     return ValidateChangeDateBasicTest();                    
@@ -42,45 +45,64 @@ namespace TecnicalTests.Agent
             {
                 throw new NotImplementedException();
             }
-        }        
+        }
 
-        private TestResult ValidateChangeDateSignature(string candidate)
+        private void ChangeUnitTestProjectToPointToCandidadeClass()
         {
-            var testResult = new TestResult();
+            //Changes "ChangeDateUnitTest.cs" to point to the candidate class
+            var unitTestFilePath = Path.Combine(projectPath, "ChangeDateUnitTest.cs");
+            var unitTestFile = File.ReadAllText(unitTestFilePath);            
+            var newContentUnitTestFile = Regex.Replace(unitTestFile, "(var candidateNamespace = \")(.*)(\";)", m => String.Format("{0}{1}{2}", m.Groups[1], candidateNamespace, m.Groups[3]));            
+            File.WriteAllText(unitTestFilePath, newContentUnitTestFile);
+            
+            //Rebuild the unit test project 
+            var builder = new ProjectBuilder();
+            var buildResult = builder.Build(csprojPath);
 
-            var desiredClassName = "CWIDateTime";
-            var desiredNamespace = new CultureInfo("en-US", false).TextInfo.ToTitleCase(candidate).Replace(" ", "");
+            //If build not pass rollback the changes (rewrites the old version of ChangeDateUnitTest.cs)
+            if (!buildResult.Passed)
+            {
+                File.WriteAllText(unitTestFilePath, unitTestFile);
+                throw new Exception("Ocorreu um erro no build do projeto de teste após mudar o apontamento para a versão do candidato.");
+            }
+        }
+
+        private OverallResult ValidateChangeDateSignature()
+        {
+            var testResult = new OverallResult();
+
+            var desiredClassName = "CWIDateTime";            
             var candidatesAssembly = Assembly.LoadFrom("../../../TechnicalTests.ChangeDate.Candidates/bin/Debug/TechnicalTests.Candidates.dll");
 
             var candidateFile = candidatesAssembly
                                 .GetTypes()
                                 .FirstOrDefault(t => t.IsClass &&
                                                      t.Name == desiredClassName &&
-                                                     t.Namespace == desiredNamespace);
+                                                     t.Namespace == candidateNamespace);
 
             if (candidateFile == null)
             {
-                testResult.Error = $@"Arquivo inválido. O namespace desejado era {desiredNamespace}.{desiredClassName}. Onde '{desiredNamespace}' é nomaspace da classe e '{desiredClassName}' é o nome da classe.";
+                testResult.Error = $@"Arquivo inválido. O namespace desejado era {candidateNamespace}.{desiredClassName}. Onde '{candidateNamespace}' é nomaspace da classe e '{desiredClassName}' é o nome da classe.";
                 return testResult;
             }
 
-            var assinaturaDesejada = candidateFile.GetMethods().FirstOrDefault(x =>
+            var desiredSignature = candidateFile.GetMethods().FirstOrDefault(x =>
                                             x.Name == "ChangeDate" &&
                                             x.IsPublic);
 
-            if (assinaturaDesejada == null)
+            if (desiredSignature == null)
             {
                 testResult.Error = "Não foi encontrado no arquivo um método público chamado 'ChangeDate'.";
                 return testResult;
             }
 
-            var parametros = assinaturaDesejada.GetParameters();
+            var parameters = desiredSignature.GetParameters();
 
-            if (parametros.Count() != 3 &&
-                assinaturaDesejada.GetParameters().ElementAt(0).ParameterType.FullName != "System.String" &&
-                assinaturaDesejada.GetParameters().ElementAt(1).ParameterType.FullName != "System.Char" &&
-                assinaturaDesejada.GetParameters().ElementAt(2).ParameterType.FullName != "System.Int64" &&
-                assinaturaDesejada.ReturnType.FullName != "System.String")
+            if (parameters.Count() != 3 &&
+                desiredSignature.GetParameters().ElementAt(0).ParameterType.FullName != "System.String" &&
+                desiredSignature.GetParameters().ElementAt(1).ParameterType.FullName != "System.Char" &&
+                desiredSignature.GetParameters().ElementAt(2).ParameterType.FullName != "System.Int64" &&
+                desiredSignature.ReturnType.FullName != "System.String")
             {
                 testResult.Error = @"Assinatura inválida. A assinatura esperada é 'public string ChangeDate(string date, char operation, long value)'. Verifique se o retorno do método 'ChangeDate é do tipo System.String, se ele possui exatamente 3 parâmetros e se os tipos dos parâmetros são 'System.String, System.Char e System.Int64' (deve obedecer essa ordem).";
                 return testResult;
@@ -89,7 +111,16 @@ namespace TecnicalTests.Agent
             return testResult;
         }
 
-        private TestResult ValidateChangeDateBasicTest()
+        private string GetCandidateNamespace(string candidate)
+        {
+            //Turns "jhon doe" into "Jhon Doe"
+            var titleCase = new CultureInfo("en-US", false).TextInfo.ToTitleCase(candidate);
+            var userNamespace = titleCase.Replace(" ", "");
+
+            return userNamespace;
+        }
+
+        private OverallResult ValidateChangeDateBasicTest()
         {
             var cmd = new Process();
             cmd.StartInfo.FileName = ConfigurationManager.AppSettings["msTestPath"];
@@ -98,10 +129,7 @@ namespace TecnicalTests.Agent
             cmd.StartInfo.RedirectStandardOutput = true;
             cmd.Start();
 
-            string output = cmd.StandardOutput.ReadToEnd();
-
-            var res = Regex.Matches(output, "((Failed)|(Passed))                CWI.TechnicalRecruiting.TechnicalTests.ChangeDateUnitTest");
-
+            string output = cmd.StandardOutput.ReadToEnd();          
             cmd.WaitForExit();
             var exitCode = cmd.ExitCode;
             cmd.Close();
@@ -109,21 +137,21 @@ namespace TecnicalTests.Agent
             if (exitCode == 0)
                 throw new Exception("Ocorreu um erro no momento de executar os testes do candidato. Detalhes do erro: \n" + output);
 
-            var testResult = new TestResult();
+            var testResult = new OverallResult();
 
-            //Pega apenas as linhas de resultado de teste 
-            var regexPattern = "(?<status>(Failed)|(Passed))                CWI.TechnicalRecruiting.TechnicalTests.ChangeDateUnitTest.(?<teste>.*([\r]|[\n]))";
+            //Takes just the lines about tests that have passed or failed
+            var regexPattern = "(?<status>Failed|Passed) {1,}CWI.TechnicalRecruiting.TechnicalTests.ChangeDateUnitTest.(?<teste>[a-zA-Z0-9]*)";
             var matches = Regex.Matches(output, regexPattern);
             foreach (Match match in matches)
             {                
-                var passou = match.Groups["status"].Value == "Passed";
-                var nomeDoTeste = match.Groups["teste"].Value;
+                var passed = match.Groups["status"].Value == "Passed";
+                var testName = match.Groups["teste"].Value;
 
-                testResult.TestsPassed.Add(nomeDoTeste, passou);
+                testResult.TestsPassed.Add(testName, passed);
             }
 
-            var falhouNoTesteBasico = !testResult.TestsPassed["BasicTest"];
-            if (falhouNoTesteBasico)
+            var passedInTheBasicTest = testResult.TestsPassed["BasicTest"];
+            if (!passedInTheBasicTest)
                 testResult.Error = "O projeto falhou no teste 'ChangeDate(\"01/03/2010 23:00\", '+', 4000)'. O resultado esperado era: \"04/03/2010 17:40\".";
 
             return testResult;
