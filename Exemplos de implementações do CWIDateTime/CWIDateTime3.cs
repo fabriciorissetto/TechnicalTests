@@ -1,7 +1,6 @@
-//Essa classe aqui falha em todos os testes, inclusive no básico
 using System;
 
-namespace FulanoDaSilva
+namespace BeltranoDosSantos
 {
     public class CWIDateTime
     {

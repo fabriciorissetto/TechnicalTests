@@ -1,4 +1,3 @@
-//Essa classe aqui passa em alguns testes e falha em outros
 namespace BeltranoDosSantos
 {
     public class CWIDateTime

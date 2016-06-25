@@ -1,7 +1,6 @@
-//Essa classe aqui passa somente no teste básico
 using System;
 
-namespace FulanoDaSilva
+namespace BeltranoDosSantos
 {
     public class CWIDateTime
     {
